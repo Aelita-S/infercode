@@ -1,4 +1,5 @@
 import nltk
+
 words = set(nltk.corpus.words.words())
 
 with open("temp_tokens.csv", "r") as f1:

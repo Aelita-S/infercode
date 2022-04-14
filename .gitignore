@@ -136,3 +136,13 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+
+# Editor config
+.idea
+.vscode
+
+# Dataset
+datasets/
+
+

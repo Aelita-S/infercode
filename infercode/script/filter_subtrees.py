@@ -1,4 +1,3 @@
-
 with open("../../subtrees.csv", "r") as f:
     data = f.read().splitlines()
     for l in data:

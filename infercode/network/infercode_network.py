@@ -1,14 +1,15 @@
-import tensorflow.compat.v1 as tf
-import sys
 import logging
 
-class InferCodeModel():
-    LOGGER = logging.getLogger('InferCodeModel')
+import tensorflow as tf
+
+
+class InferCodeModel:
+    logger = logging.getLogger('InferCodeModel')
 
     def __init__(self, num_types, num_tokens, num_subtrees, num_languages,
-                num_conv: int=2, node_type_dim:int=50 , node_token_dim: int=50,
-                conv_output_dim=50, include_token=1, batch_size=10, learning_rate: float=0.001):
-     
+                 num_conv: int = 2, node_type_dim: int = 50, node_token_dim: int = 50,
+                 conv_output_dim=50, include_token=1, batch_size=10, learning_rate: float = 0.001):
+
         self.num_types = num_types
         self.num_tokens = num_tokens
         self.num_subtrees = num_subtrees
@@ -16,7 +17,7 @@ class InferCodeModel():
 
         self.placeholders = {}
         self.weights = {}
-    
+
         self.include_token = include_token
         self.num_conv = num_conv
         self.conv_output_dim = conv_output_dim
@@ -36,66 +37,94 @@ class InferCodeModel():
 
     def init_net(self):
         """Initialize parameters"""
-        with tf.compat.v1.name_scope('inputs'):
+        with tf.name_scope('inputs'):
             # nodes = tf.placeholder(tf.float32, shape=(None, None, feature_size), name='tree')
-           
-            self.placeholders["node_type"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None), name='tree_node_type')
-            self.placeholders["node_tokens"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None, None), name='tree_node_tokens')
-            self.placeholders["children_node_tokens"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None, None, None), name='children_tokens') # batch_size x max_num_nodes x max_children x max_sub_tokens
-            
+
+            self.placeholders["node_type"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None),
+                                                                      name='tree_node_type')
+            self.placeholders["node_tokens"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None, None),
+                                                                        name='tree_node_tokens')
+            self.placeholders["children_node_tokens"] = tf.compat.v1.placeholder(tf.int32,
+                                                                                 shape=(None, None, None, None),
+                                                                                 name='children_tokens')  # batch_size x max_num_nodes x max_children x max_sub_tokens
+
             self.placeholders["language_index"] = tf.constant(0)
 
             language_matrix_index = [x for x in range(self.num_languages)]
-            self.weights["language_embeddings"] = tf.compat.v1.one_hot(language_matrix_index, len(language_matrix_index))
+            self.weights["language_embeddings"] = tf.compat.v1.one_hot(language_matrix_index,
+                                                                       len(language_matrix_index))
 
-            self.weights["node_type_embeddings"] = tf.Variable(tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")([self.num_types, self.node_type_dim]), name='node_type_embeddings')
+            self.weights["node_type_embeddings"] = tf.Variable(
+                tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")(
+                    [self.num_types, self.node_type_dim]), name='node_type_embeddings')
             if self.include_token == 1:
-                self.LOGGER.info("Including token weights..........")            
-                self.weights["node_token_embeddings"] = tf.Variable(tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")([self.num_tokens, self.node_token_dim]), name='node_token_embeddings')
+                self.logger.info("Including token weights..........")
+                self.weights["node_token_embeddings"] = tf.Variable(
+                    tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")(
+                        [self.num_tokens, self.node_token_dim]), name='node_token_embeddings')
             else:
-                self.LOGGER.info("Excluding token weights..........")
+                self.logger.info("Excluding token weights..........")
 
-            self.placeholders["children_index"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None, None), name='children_index') # batch_size x max_num_nodes x max_children
-            self.placeholders["children_node_type"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None, None), name='children_node_type') # batch_size x max_num_nodes x max_children
-            
+            self.placeholders["children_index"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None, None),
+                                                                           name='children_index')  # batch_size x max_num_nodes x max_children
+            self.placeholders["children_node_type"] = tf.compat.v1.placeholder(tf.int32, shape=(None, None, None),
+                                                                               name='children_node_type')  # batch_size x max_num_nodes x max_children
+
             self.placeholders["labels"] = tf.compat.v1.placeholder(tf.float32, shape=(None, None), name="labels")
             self.placeholders["dropout_rate"] = tf.compat.v1.placeholder(tf.float32)
             # self.placeholders['is_training'] = tf.placeholder(tf.bool, name="is_training")
-            
-            self.weights["subtree_embeddings"] = tf.Variable(tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")([self.num_subtrees, self.subtree_dim]), name='subtree_embeddings')
-            self.weights["subtree_embeddings_bias"] = tf.Variable(tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")([self.num_subtrees]), name='subtree_embeddings_bias')
+
+            self.weights["subtree_embeddings"] = tf.Variable(
+                tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")(
+                    [self.num_subtrees, self.subtree_dim]), name='subtree_embeddings')
+            self.weights["subtree_embeddings_bias"] = tf.Variable(
+                tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")(
+                    [self.num_subtrees]), name='subtree_embeddings_bias')
 
             for i in range(self.num_conv):
-                self.weights["w_t_" + str(i)] = tf.Variable(tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")([self.node_dim, self.conv_output_dim]), name='w_t_' + str(i))
-                self.weights["w_l_" + str(i)] = tf.Variable(tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")([self.node_dim, self.conv_output_dim]), name='w_l_' + str(i))
-                self.weights["w_r_" + str(i)] = tf.Variable(tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")([self.node_dim, self.conv_output_dim]), name='w_r_' + str(i))
-                self.weights["b_conv_" + str(i)] = tf.Variable(tf.zeros([self.conv_output_dim,]),name='b_conv_' + str(i))
+                self.weights["w_t_" + str(i)] = tf.Variable(
+                    tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")(
+                        [self.node_dim, self.conv_output_dim]), name='w_t_' + str(i))
+                self.weights["w_l_" + str(i)] = tf.Variable(
+                    tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")(
+                        [self.node_dim, self.conv_output_dim]), name='w_l_' + str(i))
+                self.weights["w_r_" + str(i)] = tf.Variable(
+                    tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")(
+                        [self.node_dim, self.conv_output_dim]), name='w_r_' + str(i))
+                self.weights["b_conv_" + str(i)] = tf.Variable(tf.zeros([self.conv_output_dim, ]),
+                                                               name='b_conv_' + str(i))
 
-            self.weights["w_attention"] = tf.Variable(tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")([self.node_dim, 1]), name="w_attention")
-            
+            self.weights["w_attention"] = tf.Variable(
+                tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")(
+                    [self.node_dim, 1]), name="w_attention")
+
     def feed_forward(self):
-        with tf.compat.v1.name_scope('network'):  
-                 
+        with tf.name_scope('network'):
+
             # shape = (batch_size, max_tree_size, node_type_dim)
             # Example with batch size = 12: shape = (12, 48, 30)
-            self.parent_node_type_embeddings = self.compute_parent_node_types_tensor(self.placeholders["node_type"], self.weights["node_type_embeddings"])
+            self.parent_node_type_embeddings = self.compute_parent_node_types_tensor(self.placeholders["node_type"],
+                                                                                     self.weights[
+                                                                                         "node_type_embeddings"])
 
             # shape = (batch_size, max_tree_size, max_children, node_type_dim)
             # Example with batch size = 12: shape = (12, 48, 8, 30)
-            self.children_node_type_embeddings = self.compute_children_node_types_tensor(self.parent_node_type_embeddings, self.placeholders["children_index"], self.node_type_dim)
-
-
+            self.children_node_type_embeddings = self.compute_children_node_types_tensor(
+                self.parent_node_type_embeddings, self.placeholders["children_index"], self.node_type_dim)
 
             if self.include_token == 1:
-                self.LOGGER.info("Including token information..........")
+                self.logger.info("Including token information..........")
                 # shape = (batch_size, max_tree_size, node_token_dim)
                 # Example with batch size = 12: shape = (12, 48, 50))
-                self.parent_node_token_embeddings = self.compute_parent_node_tokens_tensor(self.placeholders["node_tokens"], self.weights["node_token_embeddings"])
-                
+                self.parent_node_token_embeddings = self.compute_parent_node_tokens_tensor(
+                    self.placeholders["node_tokens"], self.weights["node_token_embeddings"])
+
                 # shape = (batch_size, max_tree_size, max_children, node_token_dim)
                 # Example with batch size = 12: shape = (12, 48, 7, 50)
-                self.children_node_token_embeddings = self.compute_children_node_tokens_tensor(self.placeholders["children_node_tokens"], self.node_token_dim, self.weights["node_token_embeddings"])
-               
+                self.children_node_token_embeddings = self.compute_children_node_tokens_tensor(
+                    self.placeholders["children_node_tokens"], self.node_token_dim,
+                    self.weights["node_token_embeddings"])
+
                 # Batch normalization for the inputs for regularization
                 # self.parent_node_type_embeddings = tf.layers.batch_normalization(self.parent_node_type_embeddings, training=self.placeholders['is_training'])
                 # self.parent_node_token_embeddings = tf.layers.batch_normalization(self.parent_node_token_embeddings, training=self.placeholders['is_training'])
@@ -104,65 +133,75 @@ class InferCodeModel():
 
                 # shape = (batch_size, max_tree_size, (node_type_dim + node_token_dim))
                 # Example with batch size = 12: shape = (12, 48, (30 + 50))) = (12, 48, 80)
-                self.parent_node_embeddings = tf.concat([self.parent_node_type_embeddings, self.parent_node_token_embeddings], -1)
+                self.parent_node_embeddings = tf.concat(
+                    [self.parent_node_type_embeddings, self.parent_node_token_embeddings], -1)
                 # self.parent_node_embeddings = tf.compat.v1.layers.dense(self.parent_node_embeddings, units=self.node_dim, activation=tf.compat.v1.nn.leaky_relu)
                 # shape = (batch_size, max_tree_size, max_children, (node_type_dim + node_token_dim))
                 # Example with batch size = 12: shape = (12, 48, 6, (30 + 50))) = (12, 48, 6, 80)
-                self.children_embeddings = tf.concat([self.children_node_type_embeddings, self.children_node_token_embeddings], -1)
+                self.children_embeddings = tf.concat(
+                    [self.children_node_type_embeddings, self.children_node_token_embeddings], -1)
                 # self.children_embeddings = tf.compat.v1.layers.dense(self.children_embeddings, units=self.node_dim, activation=tf.compat.v1.nn.leaky_relu)
 
 
             else:
-                self.LOGGER.info("Excluding token information..........")
+                self.logger.info("Excluding token information..........")
                 # Example with batch size = 12: shape = (12, 48, (30 + 50))) = (12, 48, 80)
                 self.parent_node_embeddings = self.parent_node_type_embeddings
                 self.children_embeddings = self.children_node_type_embeddings
-            
-            self.language_tensor = self.compute_language_tensors(self.placeholders["language_index"], self.weights["language_embeddings"])
-            self.language_tensor_for_parent = tf.reshape(self.language_tensor, [1, 1, self.num_languages])
-            self.language_tensor_for_parent = tf.tile(self.language_tensor_for_parent, [tf.shape(input=self.parent_node_embeddings)[0], tf.shape(input=self.parent_node_embeddings)[1], 1])
-            self.parent_node_embeddings = tf.concat([self.parent_node_embeddings, self.language_tensor_for_parent], 2)
-            self.parent_node_embeddings = tf.compat.v1.layers.dense(self.parent_node_embeddings, units=self.node_dim, activation=None, use_bias=False)
 
-            self.language_tensor_for_children= tf.reshape(self.language_tensor, [1, 1, 1, self.num_languages])
-            self.language_tensor_for_children = tf.tile(self.language_tensor_for_children, [tf.shape(input=self.children_embeddings)[0], tf.shape(input=self.children_embeddings)[1],  tf.shape(input=self.children_embeddings)[2], 1])
+            self.language_tensor = self.compute_language_tensors(self.placeholders["language_index"],
+                                                                 self.weights["language_embeddings"])
+            self.language_tensor_for_parent = tf.reshape(self.language_tensor, [1, 1, self.num_languages])
+            self.language_tensor_for_parent = tf.tile(self.language_tensor_for_parent,
+                                                      [tf.shape(input=self.parent_node_embeddings)[0],
+                                                       tf.shape(input=self.parent_node_embeddings)[1], 1])
+            self.parent_node_embeddings = tf.concat([self.parent_node_embeddings, self.language_tensor_for_parent], 2)
+            self.parent_node_embeddings = tf.compat.v1.layers.dense(self.parent_node_embeddings, units=self.node_dim,
+                                                                    activation=None, use_bias=False)
+
+            self.language_tensor_for_children = tf.reshape(self.language_tensor, [1, 1, 1, self.num_languages])
+            self.language_tensor_for_children = tf.tile(self.language_tensor_for_children,
+                                                        [tf.shape(input=self.children_embeddings)[0],
+                                                         tf.shape(input=self.children_embeddings)[1],
+                                                         tf.shape(input=self.children_embeddings)[2], 1])
             self.children_embeddings = tf.concat([self.children_embeddings, self.language_tensor_for_children], -1)
-            self.children_embeddings = tf.compat.v1.layers.dense(self.children_embeddings, units=self.node_dim, activation=None, use_bias=False)
+            self.children_embeddings = tf.compat.v1.layers.dense(self.children_embeddings, units=self.node_dim,
+                                                                 activation=None, use_bias=False)
 
             """Tree based Convolutional Layer"""
             # Example with batch size = 12 and num_conv = 8: shape = (12, 48, 128, 8)
             # Example with batch size = 1 and num_conv = 8: shape = (1, 48, 128, 8)
-            self.conv_output = self.conv_layer(self.parent_node_embeddings, self.children_embeddings, self.placeholders["children_index"], self.num_conv, self.node_dim)
+            self.conv_output = self.conv_layer(self.parent_node_embeddings, self.children_embeddings,
+                                               self.placeholders["children_index"], self.num_conv, self.node_dim)
 
             # self.conv_output = tf.concat(self.conv_output, axis=-1)
-            
-            self.code_vector, self.attention_scores = self.aggregation_layer(self.conv_output, self.weights["w_attention"])
-            # self.language_label_logits = tf.compat.v1.layers.dense(self.code_vector, units=self.num_languages, activation=tf.compat.v1.nn.leaky_relu)
 
+            self.code_vector, self.attention_scores = self.aggregation_layer(self.conv_output,
+                                                                             self.weights["w_attention"])
+            # self.language_label_logits = tf.compat.v1.layers.dense(self.code_vector, units=self.num_languages, activation=tf.compat.v1.nn.leaky_relu)
 
             # self.language_label_loss = tf.compat.v1.nn.sparse_softmax_cross_entropy_with_logits(logits=self.language_label_logits, labels=self.placeholders["language_index"])
             # self.language_label_loss = tf.reduce_mean(input_tensor=self.language_label_loss)
             # self.subtree_label_logits = tf.matmul(self.code_vector, self.weights["subtree_embeddings"], transpose_b=True)
             # self.loss = self.loss_layer(self.logits, self.placeholders["labels"])
 
-            self.sampled_softmax_loss = tf.nn.sampled_softmax_loss(weights=self.weights["subtree_embeddings"], 
-                                                              biases=self.weights["subtree_embeddings_bias"], 
-                                                              labels=self.placeholders["labels"], 
-                                                              inputs=self.code_vector, 
-                                                              num_sampled=1000, 
-                                                              num_classes=self.num_subtrees)
+            self.sampled_softmax_loss = tf.nn.sampled_softmax_loss(weights=self.weights["subtree_embeddings"],
+                                                                   biases=self.weights["subtree_embeddings_bias"],
+                                                                   labels=self.placeholders["labels"],
+                                                                   inputs=self.code_vector,
+                                                                   num_sampled=1000,
+                                                                   num_classes=self.num_subtrees)
             self.loss = tf.reduce_mean(input_tensor=self.sampled_softmax_loss)
             # self.loss = self.sampled_softmax_loss + 0.1*self.language_label_loss
 
-
-            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
                 self.training_point = self.optimizer.minimize(self.loss)
 
     def aggregation_layer(self, nodes_representation, w_attention):
         # nodes_representation is (batch_size, max_graph_size, self.node_dim)
-       
-        with tf.compat.v1.name_scope("global_attention"):
+
+        with tf.name_scope("global_attention"):
             batch_size = tf.shape(input=nodes_representation)[0]
             max_tree_size = tf.shape(input=nodes_representation)[1]
 
@@ -177,25 +216,23 @@ class InferCodeModel():
             thus making parts of aggregated vector becomes near zero and affect on the learning (very slow nodes_representationergence
             - Better to use sigmoid"""
 
-           
             attention_weights = tf.nn.softmax(attention_score, axis=1)
-            
+
             # attention_weights = tf.nn.sigmoid(attention_score)
 
             # TODO: reduce_max vs reduce_sum vs reduce_mean
             # if aggregation_type == 1:
             #     print("Using tf.reduce_sum...........")
-            weighted_average_nodes = tf.reduce_sum(input_tensor=tf.multiply(nodes_representation, attention_weights), axis=1)
+            weighted_average_nodes = tf.reduce_sum(input_tensor=tf.multiply(nodes_representation, attention_weights),
+                                                   axis=1)
             # if aggregation_type == 2:
-                # print("Using tf.reduce_max...........")
-                # weighted_average_nodes = tf.reduce_max(tf.multiply(nodes_representation, attention_weights), axis=1)
+            # print("Using tf.reduce_max...........")
+            # weighted_average_nodes = tf.reduce_max(tf.multiply(nodes_representation, attention_weights), axis=1)
             # if aggregation_type == 3:
-                # print("Using tf.reduce_mean...........")
-                # weighted_average_nodes = tf.reduce_mean(tf.multiply(nodes_representation, attention_weights), axis=1)
+            # print("Using tf.reduce_mean...........")
+            # weighted_average_nodes = tf.reduce_mean(tf.multiply(nodes_representation, attention_weights), axis=1)
 
             return weighted_average_nodes, attention_weights
-
-
 
     # def aggregation_layer(self, conv):
     #     # conv is (batch_size, max_tree_size, conv_output_dim)
@@ -205,32 +242,35 @@ class InferCodeModel():
 
     #         contexts_sum = tf.reduce_sum(conv, axis=1)
     #         contexts_sum_average = tf.divide(contexts_sum, tf.to_float(tf.expand_dims(max_tree_size, -1)))
-          
-    #         return contexts_sum_average
 
+    #         return contexts_sum_average
 
     def conv_node(self, parent_node_embeddings, children_embeddings, children_indices, node_dim, layer):
         """Perform convolutions over every batch sample."""
-        with tf.compat.v1.name_scope('conv_node'):
-            w_t, w_l, w_r = self.weights["w_t_" + str(layer)], self.weights["w_l_" + str(layer)], self.weights["w_r_" + str(layer)]
+        with tf.name_scope('conv_node'):
+            w_t, w_l, w_r = self.weights["w_t_" + str(layer)], self.weights["w_l_" + str(layer)], self.weights[
+                "w_r_" + str(layer)]
             b_conv = self.weights["b_conv_" + str(layer)]
-       
-            return self.conv_step(parent_node_embeddings, children_embeddings, children_indices, node_dim, w_t, w_r, w_l, b_conv)
+
+            return self.conv_step(parent_node_embeddings, children_embeddings, children_indices, node_dim, w_t, w_r,
+                                  w_l, b_conv)
 
     def conv_layer(self, parent_node_embeddings, children_embeddings, children_indices, num_conv, node_dim):
-        with tf.compat.v1.name_scope('conv_layer'):
+        with tf.name_scope('conv_layer'):
             # nodes = [
             #     tf.expand_dims(self.conv_node(parent_node_embeddings, children_embeddings, children_indices, node_dim, layer),axis=-1)
             #     for layer in range(num_conv)
-            # ] 
+            # ]
             # nodes = []
 
             for layer in range(num_conv):
-                parent_node_embeddings = self.conv_node(parent_node_embeddings, children_embeddings, children_indices, node_dim, layer)
-                children_embeddings = self.compute_children_node_types_tensor(parent_node_embeddings, children_indices, node_dim)
+                parent_node_embeddings = self.conv_node(parent_node_embeddings, children_embeddings, children_indices,
+                                                        node_dim, layer)
+                children_embeddings = self.compute_children_node_types_tensor(parent_node_embeddings, children_indices,
+                                                                              node_dim)
                 # nodes.append(tf.expand_dims(parent_node_embeddings, axis=-1))
                 # nodes = tf.expand_dims(parent_node_embeddings, axis=-1)
-            return parent_node_embeddings 
+            return parent_node_embeddings
 
     def conv_step(self, parent_node_embeddings, children_embeddings, children_indices, node_dim, w_t, w_r, w_l, b_conv):
         """Convolve a batch of nodes and children.
@@ -239,12 +279,11 @@ class InferCodeModel():
         is more efficient. Don't try to wrap your head around all the tensor dot
         products, just follow the trail of dimensions.
         """
-        with tf.compat.v1.name_scope('conv_step'):
+        with tf.name_scope('conv_step'):
             # nodes is shape (batch_size x max_tree_size x node_dim)
             # children is shape (batch_size x max_tree_size x max_children)
 
-            with tf.compat.v1.name_scope('trees'):
-              
+            with tf.name_scope('trees'):
                 # add a 4th dimension to the parent nodes tensor
                 # nodes is shape (batch_size x max_tree_size x 1 x node_dim)
                 parent_node_embeddings = tf.expand_dims(parent_node_embeddings, axis=2)
@@ -293,7 +332,7 @@ class InferCodeModel():
 
     def compute_children_node_types_tensor(self, parent_node_embeddings, children_indices, node_type_dim):
         """Build the children tensor from the input nodes and child lookup."""
-    
+
         max_children = tf.shape(input=children_indices)[2]
         batch_size = tf.shape(input=parent_node_embeddings)[0]
         num_nodes = tf.shape(input=parent_node_embeddings)[1]
@@ -318,13 +357,13 @@ class InferCodeModel():
         return tf.gather_nd(vector_lookup, children_indices)
 
     def compute_language_tensors(self, language_index, language_embeddings):
-        language_tensors =  tf.nn.embedding_lookup(params=language_embeddings,ids=language_index)
+        language_tensors = tf.nn.embedding_lookup(params=language_embeddings, ids=language_index)
         return language_tensors
 
     def compute_parent_node_types_tensor(self, parent_node_types_indices, node_type_embeddings):
-        parent_node_types_tensor =  tf.nn.embedding_lookup(params=node_type_embeddings,ids=parent_node_types_indices)
+        parent_node_types_tensor = tf.nn.embedding_lookup(params=node_type_embeddings, ids=parent_node_types_indices)
         return parent_node_types_tensor
-    
+
     def compute_parent_node_tokens_tensor(self, parent_node_tokens_indices, node_token_embeddings):
         parent_node_tokens_tensor = tf.nn.embedding_lookup(params=node_token_embeddings, ids=parent_node_tokens_indices)
         parent_node_tokens_tensor = tf.reduce_sum(input_tensor=parent_node_tokens_tensor, axis=2)
@@ -333,7 +372,7 @@ class InferCodeModel():
     # def compute_children_node_types_tensor(self, children_node_types_indices):
     #     children_node_types_tensor =  tf.nn.embedding_lookup(self.node_type_embeddings, children_node_types_indices)
     #     return children_node_types_tensor
-    
+
     def compute_children_node_tokens_tensor(self, children_node_tokens_indices, node_token_dim, node_token_embeddings):
         batch_size = tf.shape(input=children_node_tokens_indices)[0]
         zero_vecs = tf.zeros((1, node_token_dim))
@@ -344,7 +383,7 @@ class InferCodeModel():
 
     def eta_t(self, children):
         """Compute weight matrix for how much each vector belongs to the 'top'"""
-        with tf.compat.v1.name_scope('coef_t'):
+        with tf.name_scope('coef_t'):
             # children is shape (batch_size x max_tree_size x max_children)
             batch_size = tf.shape(input=children)[0]
             max_tree_size = tf.shape(input=children)[1]
@@ -357,7 +396,7 @@ class InferCodeModel():
 
     def eta_r(self, children, t_coef):
         """Compute weight matrix for how much each vector belogs to the 'right'"""
-        with tf.compat.v1.name_scope('coef_r'):
+        with tf.name_scope('coef_r'):
             # children is shape (batch_size x max_tree_size x max_children)
             children = tf.cast(children, tf.float32)
             batch_size = tf.shape(input=children)[0]
@@ -413,7 +452,7 @@ class InferCodeModel():
 
     def eta_l(self, children, coef_t, coef_r):
         """Compute weight matrix for how much each vector belongs to the 'left'"""
-        with tf.compat.v1.name_scope('coef_l'):
+        with tf.name_scope('coef_l'):
             children = tf.cast(children, tf.float32)
             batch_size = tf.shape(input=children)[0]
             max_tree_size = tf.shape(input=children)[1]
@@ -421,7 +460,7 @@ class InferCodeModel():
             # has shape (batch_size x max_tree_size x max_children + 1)
             mask = tf.concat(
                 [tf.zeros((batch_size, max_tree_size, 1)),
-                    tf.minimum(children, tf.ones(tf.shape(input=children)))],
+                 tf.minimum(children, tf.ones(tf.shape(input=children)))],
                 axis=2,
                 name='mask'
             )
@@ -433,18 +472,18 @@ class InferCodeModel():
 
     def loss_layer(self, logits_node, labels):
         """Create a loss layer for training."""
-    
-        with tf.compat.v1.name_scope('loss_layer'):
+
+        with tf.name_scope('loss_layer'):
             cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
                 labels=labels, logits=logits_node, name='cross_entropy'
             )
 
             loss = tf.reduce_mean(input_tensor=cross_entropy, name='cross_entropy_mean')
             return loss
- 
+
     # def loss_layer(self, training_logits, targets, target_mask):
     #     """Create a loss layer for training."""
-       
+
     #     with tf.name_scope('loss_layer'):
     #         loss = tf.contrib.seq2seq.sequence_loss(training_logits,targets,target_mask)
 

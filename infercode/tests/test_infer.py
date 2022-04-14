@@ -1,10 +1,8 @@
-import sys
-from pathlib import Path
-# To import upper level modules
-sys.path.append(str(Path('.').absolute().parent))
-from client.infercode_client import InferCodeClient
-import os
 import logging
+import os
+
+from infercode.client.infercode_client import InferCodeClient
+
 logging.basicConfig(level=logging.INFO)
 
 # Change from -1 to 0 to enable GPU

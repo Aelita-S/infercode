@@ -1,13 +1,14 @@
 import logging
 import os
-from collections import Counter
-from tempfile import TemporaryDirectory
-from typing import List, Optional, Sized, Union, Iterable
-import sentencepiece as spm
-from dpu_utils.codeutils import identifiersplitting
 import typing
+from collections import Counter
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Iterable, List, Optional, Sized, Union
 
-__all__ = ['BpeVocabulary']
+import sentencepiece as spm
+
+__all__ = ['Vocabulary']
 
 SPIECE_UNDERLINE = u'▁'
 
@@ -35,34 +36,34 @@ class Vocabulary(Sized):
     LOGGER = logging.getLogger('Vocabulary')
     DEFAULT_CONTROL_SYMBOLS = ["<endofline>", "<endoftext>"]
 
-    def __init__(self, max_size: int, sentencepiece_model_filepath: Optional[str]=None,
-                 bos_token: str="<s>", eos_token: str="</s>", unk_token: str="<unk>", pad_token: str="<pad>",
+    def __init__(self, max_size: int, sentencepiece_model_filepath: Optional[Union[str, Path]] = None,
+                 bos_token: str = "<s>", eos_token: str = "</s>", unk_token: str = "<unk>", pad_token: str = "<pad>",
                  user_defined_symbols: Optional[List[str]] = None,
-                 control_symbols: Optional[List[str]]=None) -> None:
+                 control_symbols: Optional[List[str]] = None) -> None:
 
         self.__f = 4
-        self.__max_size=max_size
-        self.__bos_token=bos_token
-        self.__eos_token=eos_token
-        self.__unk_token=unk_token
-        self.__pad_token=pad_token
+        self.__max_size = max_size
+        self.__bos_token = bos_token
+        self.__eos_token = eos_token
+        self.__unk_token = unk_token
+        self.__pad_token = pad_token
 
         self.vocab_file = sentencepiece_model_filepath
         if user_defined_symbols is None:
             user_defined_symbols = []
-        self.user_defined_symbols=",".join(user_defined_symbols)
+        self.user_defined_symbols = ",".join(user_defined_symbols)
 
         if control_symbols is None:
             control_symbols = self.DEFAULT_CONTROL_SYMBOLS
-        self.control_symbols=",".join(control_symbols)
+        self.control_symbols = ",".join(control_symbols)
 
         self.__sp_model = spm.SentencePieceProcessor()
         if sentencepiece_model_filepath is not None:
             self.__load_model_from_filepath(sentencepiece_model_filepath)
 
-    #region Custom Pickling
+    # region Custom Pickling
     def __load_model_from_filepath(self, sentencepiece_model_filepath) -> bool:
-        loaded = self.__sp_model.Load(sentencepiece_model_filepath)
+        loaded = self.__sp_model.Load(str(sentencepiece_model_filepath))
         # We want to encapsulate all vocabulary-related elements in a single location (this object!) and avoid
         # dangling files. We store all model data in this object as a set of bytes.
         with open(sentencepiece_model_filepath, 'rb') as f:
@@ -82,12 +83,13 @@ class Vocabulary(Sized):
         if self.__sp_model_data is None:
             return
         with TemporaryDirectory() as tmp_dir:
-            model_file = os.path.join(tmp_dir, 'tmp.model')
+            model_file = Path(tmp_dir) / 'tmp.model'
             with open(model_file, 'wb') as f:
                 f.write(self.__sp_model_data)
             self.__sp_model = spm.SentencePieceProcessor()
             self.__sp_model.Load(model_file)
-    #endregion
+
+    # endregion
     def get_vocabulary(self):
         return dict([[self.__sp_model.id_to_piece(id), id] for id in range(self.__sp_model.get_piece_size())])
 
@@ -112,16 +114,16 @@ class Vocabulary(Sized):
     def tokenize(self, text: str) -> List[str]:
         """ Tokenize a string. """
         pieces = self.__sp_model.EncodeAsPieces(text)
-        new_pieces = []   # type: List[str]
+        new_pieces = []  # type: List[str]
         for piece in pieces:
             # Split subtokens composed of a digit and comma
             #
-            # E.g. given in an input sentence: 
+            # E.g. given in an input sentence:
             #      text = 'for i in range(100, 2):'
-            # Default output of tokenizer may be: 
+            # Default output of tokenizer may be:
             #      ['▁for', '▁i', '▁in', '▁range', '(1', '00,', '▁2', '):']
-            # Following will change this to: 
-            #      ['▁for', '▁i', '▁in', '▁range', '(1', '0', '0', ',', '▁2', '):']            
+            # Following will change this to:
+            #      ['▁for', '▁i', '▁in', '▁range', '(1', '0', '0', ',', '▁2', '):']
             if len(piece) > 1 and piece[-1] == ',' and piece[-2].isdigit():
                 cur_pieces = self.__sp_model.EncodeAsPieces(
                     piece[:-1].replace(SPIECE_UNDERLINE, ''))
@@ -162,8 +164,10 @@ class Vocabulary(Sized):
         out_string = ''.join((self.__sp_model.IdToPiece(i) for i in piece_ids)).replace(SPIECE_UNDERLINE, ' ').strip()
         return out_string
 
-    def create_vocabulary_from_file(self, sp_text_file: str, num_threads: Optional[int]=os.cpu_count(), model_filename: str="bpe", 
-                                    model_type: str="bpe", max_sentence_length: int=16384, character_coverage: float=0.99995) -> None:
+    def create_vocabulary_from_file(self, sp_text_file: str, num_threads: Optional[int] = os.cpu_count(),
+                                    model_filename: Union[str, Path] = "bpe",
+                                    model_type: str = "bpe", max_sentence_length: int = 16384,
+                                    character_coverage: float = 0.99995) -> None:
         """
         Train sentencepiece tokenizer using BPE model and build a vocabulary.
 
@@ -174,33 +178,33 @@ class Vocabulary(Sized):
         with TemporaryDirectory() as tmpdir:
             # model_filename = os.path.join(tmpdir, f'bpe_{self.__max_size}')
             command = [
-                        f"--input={sp_text_file}",
-                        f"--num_threads={num_threads}",
-                        f"--model_prefix={model_filename}",
-                        f"--vocab_size={self.__max_size}",
-                        f"--model_type={model_type}",
-                        f"--max_sentence_length={max_sentence_length}",
-                        f"--bos_piece={self.__bos_token}",
-                        f"--eos_piece={self.__eos_token}",
-                        f"--pad_piece={self.__pad_token}",
-                        f"--pad_id=3",
-                        f"--unk_piece={self.__unk_token}",
-                        f"--user_defined_symbols={self.user_defined_symbols}",
-                        f"--control_symbols={self.control_symbols}",
-                        f"--character_coverage={character_coverage}",
-                        "--minloglevel=1",
-                        "--hard_vocab_limit=false",
-                    ]
+                f"--input={sp_text_file}",
+                f"--num_threads={num_threads}",
+                f"--model_prefix={model_filename}",
+                f"--vocab_size={self.__max_size}",
+                f"--model_type={model_type}",
+                f"--max_sentence_length={max_sentence_length}",
+                f"--bos_piece={self.__bos_token}",
+                f"--eos_piece={self.__eos_token}",
+                f"--pad_piece={self.__pad_token}",
+                f"--pad_id=3",
+                f"--unk_piece={self.__unk_token}",
+                f"--user_defined_symbols={self.user_defined_symbols}",
+                f"--control_symbols={self.control_symbols}",
+                f"--character_coverage={character_coverage}",
+                "--minloglevel=1",
+                "--hard_vocab_limit=false",
+            ]
 
             spm.SentencePieceTrainer.train(
                 " ".join(command)
             )
 
-            loaded = self.__load_model_from_filepath(model_filename+'.model')
+            loaded = self.__load_model_from_filepath(str(model_filename))
             assert loaded, 'Sentencepiece failed to load model.'
 
-    def create_vocabulary(self, tokens: Union[Iterable[str], Iterable[List[str]], typing.Counter[str]], 
-                        model_filename: str, model_type: str) -> None:
+    def create_vocabulary(self, tokens: Union[Iterable[str], Iterable[List[str]], typing.Counter[str]],
+                          model_filename: Union[str, Path], model_type: str) -> None:
         with TemporaryDirectory() as dir:
             data_path = os.path.join(dir, 'tmpvocab.model')
             with open(data_path, 'w') as f:
@@ -215,4 +219,5 @@ class Vocabulary(Sized):
                         else:
                             f.write(' '.join(element))
                             f.write('\n')
-            return self.create_vocabulary_from_file(sp_text_file=data_path, model_filename=model_filename,  model_type=model_type)   
+            return self.create_vocabulary_from_file(sp_text_file=data_path, model_filename=model_filename,
+                                                    model_type=model_type)

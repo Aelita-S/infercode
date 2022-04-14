@@ -1,11 +1,5 @@
-import sys
-from pathlib import Path
-# To import upper level modules
-sys.path.append(str(Path('.').absolute().parent))
-from data_utils.vocabulary import Vocabulary
-import os
-from dpu_utils.codeutils import identifiersplitting
-
+from infercode.data_utils import identifiersplitting
+from infercode.data_utils.vocabulary import Vocabulary
 
 vocab = Vocabulary(1000000, "../sentencepiece_vocab/tokens/universal_token_subword.model")
 # vocab.create_vocabulary(tokens=data, model_filename="universal_subtrees", model_type="word")

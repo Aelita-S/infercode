@@ -1,14 +1,18 @@
-from dpu_utils.codeutils import identifiersplitting
-from tqdm import *
-from .vocabulary import Vocabulary
 import os
 import queue
 import threading
+from pathlib import Path
 
-class TokenVocabExtractor():
+from tqdm import tqdm
 
-    def __init__(self, node_token_vocab_model_prefix: str, model_type: str="bpe") -> None:
-        self.node_token_vocab_model_prefix = node_token_vocab_model_prefix
+from infercode.data_utils import identifiersplitting
+from .vocabulary import Vocabulary
+
+
+class TokenVocabExtractor:
+
+    def __init__(self, node_token_vocab_model_path: Path, model_type: str = "bpe") -> None:
+        self.node_token_vocab_model_path = node_token_vocab_model_path
         self.model_type = model_type
         self.token_vocab = Vocabulary(1000000)
 
@@ -24,13 +28,12 @@ class TokenVocabExtractor():
             subtree_thread = TokenProcessThread(pathqueue, resultqueue)
             subtree_thread.setDaemon(True)
             subtree_thread.start()
-          
 
         write_thread = WriteThread(resultqueue, self.temp_tokens_file)
         write_thread.setDaemon(True)
         write_thread.start()
 
-        for subdir , dirs, files in os.walk(input_data_path): 
+        for subdir, dirs, files in os.walk(input_data_path):
             for file in tqdm(files):
                 # if file.endswith(file_types):
                 file_path = os.path.join(subdir, file)
@@ -42,9 +45,10 @@ class TokenVocabExtractor():
         pathqueue.join()
         resultqueue.join()
 
-        self.token_vocab.create_vocabulary_from_file(sp_text_file=self.temp_tokens_file, model_filename=self.node_token_vocab_model_prefix, model_type=self.model_type)        
+        self.token_vocab.create_vocabulary_from_file(sp_text_file=self.temp_tokens_file,
+                                                     model_filename=self.node_token_vocab_model_path,
+                                                     model_type=self.model_type)
         return self.token_vocab
-
 
 
 class TokenProcessThread(threading.Thread):
@@ -60,15 +64,12 @@ class TokenProcessThread(threading.Thread):
             self.out_queue.put(result)
             self.in_queue.task_done()
 
-    def _stop(self):
-        if self.isAlive():
-            Thread._Thread__stop(self)
-
     def process(self, data):
         # Do the processing job here
         data = data.replace("\n", " ")
         parts = identifiersplitting.split_identifier_into_parts(data)
         return " ".join(parts)
+
 
 class WriteThread(threading.Thread):
     def __init__(self, queue, output_path):

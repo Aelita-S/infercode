@@ -1,16 +1,13 @@
 #!/usr/bin/env/python
-import numpy as np
 import queue
 import threading
-import numpy as np
-from sklearn import preprocessing
-import itertools
+
 
 class ThreadedIterator:
     """An iterator object that computes its elements in a parallel thread to be ready to be consumed.
     The iterator should *not* return None"""
 
-    def __init__(self, original_iterator, max_queue_size: int=2):
+    def __init__(self, original_iterator, max_queue_size: int = 2):
         self.__queue = queue.Queue(maxsize=max_queue_size)
         self.__thread = threading.Thread(target=lambda: self.worker(original_iterator))
         self.__thread.start()

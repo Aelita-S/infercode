@@ -3,25 +3,42 @@
     <img src="logo/twitter_header_photo_2.png" width="600"/>
     <br>
 <p>
-  
-## Map Any Code Snippet into Vector Embedding with InferCode. 
 
-This is a Tensorflow Implementation for "InferCode: Self-Supervised Learning of Code Representations by Predicting Subtrees" (ICSE'21). InferCode works based on the key idea of using an encoder to predict subtrees as a pretext task. Then the weights learned from the encoder can be used to transfer for other downstream tasks. This is to alleviate the need for the huge amount of labeled data to build decent code learning models in Software Engineering. With this concept, representation learning models for  source code can now learn from unlabeled data. 
-    
-We trained our model on a dataset comprised of 19 languages, which are: java, c, c++, c#, golang, javascript, lua, php, python, ruby, rust, scala, kotlin, solidity, haskell, r, html, css, bash. We use [tree-sitter](https://github.com/tree-sitter/tree-sitter) as the backbone to parse these languages to AST. This is a bit different from the implementation we reported in our paper, which used [srcml](https://www.srcml.org/) as the AST parser. The reasons are that we found that tree-sitter supports more language than srcml, and tree-sitter also provides a [python binding interface](https://github.com/tree-sitter/py-tree-sitter), which makes it easy to parse any code snippet into AST by using python code. A details of our old implementation using srcml can be found in [old_version](old_version/).
+## Map Any Code Snippet into Vector Embedding with InferCode.
+
+This is a Tensorflow Implementation for "InferCode: Self-Supervised Learning of Code Representations by Predicting
+Subtrees" (ICSE'21). InferCode works based on the key idea of using an encoder to predict subtrees as a pretext task.
+Then the weights learned from the encoder can be used to transfer for other downstream tasks. This is to alleviate the
+need for the huge amount of labeled data to build decent code learning models in Software Engineering. With this
+concept, representation learning models for source code can now learn from unlabeled data.
+
+We trained our model on a dataset comprised of 19 languages, which are: java, c, c++, c#, golang, javascript, lua, php,
+python, ruby, rust, scala, kotlin, solidity, haskell, r, html, css, bash. We
+use [tree-sitter](https://github.com/tree-sitter/tree-sitter) as the backbone to parse these languages to AST. This is a
+bit different from the implementation we reported in our paper, which used [srcml](https://www.srcml.org/) as the AST
+parser. The reasons are that we found that tree-sitter supports more language than srcml, and tree-sitter also provides
+a [python binding interface](https://github.com/tree-sitter/py-tree-sitter), which makes it easy to parse any code
+snippet into AST by using python code. A details of our old implementation using srcml can be found
+in [old_version](old_version/).
 
 ## Set up
+
 Install the Pypi package (current version is 0.0.28):
+
 ```python
-pip3 install infercode
+pip3
+install
+infercode
 ```
-    
+
 ## Usage
 
 Infercode can be tested/used as a command
+
 ```bash
 infercode <file1>.<ext1> [<file2>.<ext2>...]
 ```
+
 where `<file>` is a file name, and `<ext>` is the file extension. The file extension
 will be used to select the programming language for infercode to choose the corresponding
 parser. It will generate a numpy vector for each file in the argument.
@@ -32,6 +49,7 @@ You can also use `infercode` as a python library for more advanced uses:
 from infercode.client.infercode_client import InferCodeClient
 import os
 import logging
+
 logging.basicConfig(level=logging.INFO)
 
 # Change from -1 to 0 to enable GPU
@@ -44,8 +62,9 @@ vectors = infercode.encode(["for (i = 0; i < n; i++)", "struct book{ int num; ch
 print(vectors)
 
 ```
-    
+
 Then we have the output embeddings:
+
 ```bash
 [[ 0.00455336  0.00277071  0.00299444 -0.00264732  0.00424443  0.02380365
 0.00802475  0.01927063  0.00889819  0.01684897  0.03249155  0.01853252
@@ -67,17 +86,24 @@ Then we have the output embeddings:
 0.01541999  0.03995579]]
 ```
 
-Note that on the initial step, the script will build tree-sitter parsers from sources into ```~/.tree-sitter/bin```, download our pretrained model, and store it into ```~/.infercode_data/model_checkpoint```.
-    
+Note that on the initial step, the script will build tree-sitter parsers from sources into ```~/.tree-sitter/bin```,
+download our pretrained model, and store it into ```~/.infercode_data/model_checkpoint```.
+
 ## Compare to other work
-- There are a few other techniques for code representation learning, but none of them are designed with the intention to have a pretrained model to convert code to vector. For example, [Code2vec](https://arxiv.org/abs/1803.09473) (Alon et al.), despite the attractive name, Code2vec is not suitable to convert code to vector since they trained the model to predict the method name. If one wants to reuse the Code2vec model to convert code to vector, their implementation is not ready for this purpose. 
-    
-- There are also other pretrained models for code, such as CodeBert, GraphCodeBert, CuBert, etc, but they did not wrap their code into usable inferfaces.
+
+- There are a few other techniques for code representation learning, but none of them are designed with the intention to
+  have a pretrained model to convert code to vector. For example, [Code2vec](https://arxiv.org/abs/1803.09473) (Alon et
+  al.), despite the attractive name, Code2vec is not suitable to convert code to vector since they trained the model to
+  predict the method name. If one wants to reuse the Code2vec model to convert code to vector, their implementation is
+  not ready for this purpose.
+
+- There are also other pretrained models for code, such as CodeBert, GraphCodeBert, CuBert, etc, but they did not wrap
+  their code into usable inferfaces.
 
 - None of the above work supports such many languages like InferCode.
-    
-    
+
 ## Citation
+
 If you find this work useful for your research, please consider citing our paper:
 
 ```bibtex
