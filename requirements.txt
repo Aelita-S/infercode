@@ -1,9 +1,7 @@
-bidict == 0.21.2
-matplotlib == 3.4.0
-nltk == 3.5
-numpy == 1.19.4
-scipy == 1.5.2
-sentencepiece == 0.1.95
-tensorflow ~= 2.8.0
-tqdm == 4.55.1
-tree_sitter ~= 0.20.0
+bidict~=0.22.0
+numpy~=1.22.3
+sentencepiece~=0.1.96
+tensorflow~=2.8.0
+tqdm~=4.64.0
+tree_sitter~=0.20.0
+tree_sitter_parsers~=0.0.7
