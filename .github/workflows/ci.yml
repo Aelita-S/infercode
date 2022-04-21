@@ -46,8 +46,8 @@ jobs:
           build-args: |
             APP_VERSION=${{ env.APP_VERSION }}
           tags: |
-            aelitadoc/infercode_serving:latest
-            aelitadoc/infercode_serving:${{ env.APP_VERSION }}
+            aelitadoc/infercode_server:latest
+            aelitadoc/infercode_server:${{ env.APP_VERSION }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
