@@ -25,17 +25,15 @@ class DatasetProcessor:
                  output_tensors_path: Union[str, Path],
                  node_type_vocab_model_path: Union[str, Path],
                  node_token_vocab_model_path: Union[str, Path],
-                 subtree_vocab_model_path: Union[str, Path],
-                 language: str):
+                 subtree_vocab_model_path: Union[str, Path]):
 
-        self.language = language
         self.input_data_path = input_data_path
         self.output_tensors_path = output_tensors_path
         self.node_type_vocab_model_path = node_type_vocab_model_path
         self.node_token_vocab_model_path = node_token_vocab_model_path
         self.subtree_vocab_model_path = subtree_vocab_model_path
 
-        self.ast_parser = ASTParser(language=language)
+        self.ast_parser = ASTParser()
         self.subtree_util = SubtreeUtil()
         self.language_util = LanguageUtil()
 
@@ -55,21 +53,23 @@ class DatasetProcessor:
         _, file_extension = os.path.splitext(file_path)
         return self.language_util.get_language_by_file_extension(file_extension)
 
-    # Trees with similar size should be put into the same bucket
     def put_trees_into_buckets(self):
-
+        """Trees with similar size should be put into the same bucket"""
         bucket_sizes = np.array(list(range(20, 7500, 20)))
         buckets = defaultdict(list)
 
-        for subdir, dirs, files in os.walk(self.input_data_path):
-            for file in tqdm(files):
+        for i, (subdir, dirs, files) in enumerate(os.walk(self.input_data_path)):
+            for file in tqdm(files, desc=f"Processing dir {subdir}: "):
+                language = self.detect_language_of_file(file)
+                language_index = self.language_util.get_language_index(language)
                 file_path = os.path.join(subdir, file)
                 with open(file_path, "rb") as f:
                     code_snippet = f.read()
-                ast = self.ast_parser.parse(code_snippet)
-                tree_representation, tree_size = self.ast_util.simplify_ast(ast, code_snippet.decode("utf-8"))
+                ast = self.ast_parser.parse_with_language(code_snippet, language=language)
+                tree_representation, tree_size = self.ast_util.simplify_ast(ast, code_snippet.decode('utf-8', 'ignore'))
 
                 tree_indexes = self.tensor_util.transform_tree_to_index(tree_representation)
+                tree_indexes["language_index"] = language_index
                 tree_indexes["size"] = tree_size
 
                 # Extract all subtrees from the code snippet
@@ -114,7 +114,6 @@ class DatasetProcessor:
             self.subtree_vocab = Vocabulary(100000, self.subtree_vocab_model_path)
 
     def process_or_load_data(self):
-
         if not os.path.exists(self.output_tensors_path):
             self.logger.info("Processing the dataset")
             training_buckets = self.put_trees_into_buckets()

@@ -14,10 +14,9 @@ parser.add_argument('--language', type=str)
 def main(opt):
     data_processor = DatasetProcessor(input_data_path=opt.data_path,
                                       output_tensors_path=opt.output_processed_data_path,
-                                      node_type_vocab_model_path=opt.node_type_vocab_model_path,
-                                      node_token_vocab_model_path=opt.node_token_vocab_model_path,
-                                      subtree_vocab_model_prefix=opt.subtree_vocab_model_path,
-                                      language=opt.language)
+                                      node_type_vocab_model_path=opt.NODE_TYPE_VOCAB_MODEL_PATH,
+                                      node_token_vocab_model_path=opt.NODE_TOKEN_VOCAB_MODEL_PATH,
+                                      subtree_vocab_model_path=opt.SUBTREE_VOCAB_MODEL_PATH)
 
     data_processor.process_or_load_data()
 

@@ -7,8 +7,6 @@ class TensorUtil:
         pass
 
     def transform_tree_to_index(self, tree):
-
-        # print(tree)
         node_type = []
         node_type_id = []
         node_tokens = []
@@ -21,14 +19,9 @@ class TensorUtil:
         children_node_tokens_id = []
 
         queue = [(tree, -1)]
-        # print queue
         while queue:
-            # print "############"
             node, parent_ind = queue.pop(0)
-            # print node
-            # print parent_ind
             node_ind = len(node_type)
-            # print "node ind : " + str(node_ind)
             # add children and the parent index to the queue
             queue.extend([(child, node_ind) for child in node['children']])
             # create a list to store this node's children indices
@@ -51,21 +44,21 @@ class TensorUtil:
             node_tokens_id.append(node["node_tokens_id"])
             node_index.append(node_ind)
 
-        data = {}
-        data["node_index"] = node_index
-        data["node_type"] = node_type
-        data["node_type_id"] = node_type_id
-        data["node_tokens"] = node_tokens
-        data["node_tokens_id"] = node_tokens_id
-        data["children_index"] = children_index
-        data["children_node_type"] = children_node_type
-        data["children_node_type_id"] = children_node_type_id
-        data["children_node_tokens"] = children_node_tokens
-        data["children_node_tokens_id"] = children_node_tokens_id
+        data = {"node_index": node_index,
+                "node_type": node_type,
+                "node_type_id": node_type_id,
+                "node_tokens": node_tokens,
+                "node_tokens_id": node_tokens_id,
+                "children_index": children_index,
+                "children_node_type": children_node_type,
+                "children_node_type_id": children_node_type_id,
+                "children_node_tokens": children_node_tokens,
+                "children_node_tokens_id": children_node_tokens_id}
 
         return data
 
-    def trees_to_batch_tensors(self, all_tree_indices):
+    def trees_to_batch_tensors(self, all_tree_indices) -> tuple[list[np.ndarray], np.ndarray]:
+        batch_language_index = []
         batch_node_index = []
         batch_node_type = []
         batch_node_type_id = []
@@ -77,11 +70,8 @@ class TensorUtil:
         batch_children_node_tokens = []
         batch_children_node_tokens_id = []
         batch_subtree_id = []
-        batch_language_index = []
 
         for tree_indices in all_tree_indices:
-
-            # random_subtree_id = self.random_sampling_subtree(tree_data["subtrees_ids"])
 
             batch_node_index.append(tree_indices["node_index"])
             batch_node_type.append(tree_indices["node_type"])
@@ -93,45 +83,37 @@ class TensorUtil:
             batch_children_node_type_id.append(tree_indices["children_node_type_id"])
             batch_children_node_tokens.append(tree_indices["children_node_tokens"])
             batch_children_node_tokens_id.append(tree_indices["children_node_tokens_id"])
-
+            batch_language_index.append(tree_indices["language_index"])
             if "subtree_id" in tree_indices:
                 batch_subtree_id.append(tree_indices["subtree_id"])
-            # batch_subtree_id.append([5, 2])
 
-        # [[]]
-        batch_node_index = self._pad_batch_2D(batch_node_index)
         # [[]]
         batch_node_type_id = self._pad_batch_2D(batch_node_type_id)
         # [[[]]]
         batch_node_tokens_id = self._pad_batch_3D(batch_node_tokens_id)
         # [[[]]]
         batch_children_index = self._pad_batch_3D(batch_children_index)
-        # [[[]]]
-        batch_children_node_type_id = self._pad_batch_3D(batch_children_node_type_id)
         # [[[[]]]]
         batch_children_node_tokens_id = self._pad_batch_4D(batch_children_node_tokens_id)
-
-        batch_obj = {
-            "batch_node_index": np.asarray(batch_node_index),
-            "batch_node_type_id": np.asarray(batch_node_type_id),
-            "batch_node_tokens_id": np.asarray(batch_node_tokens_id),
-            "batch_children_index": np.asarray(batch_children_index),
-            "batch_children_node_type_id": np.asarray(batch_children_node_type_id),
-            "batch_children_node_tokens_id": np.asarray(batch_children_node_tokens_id),
-            "batch_language_index": np.asarray(batch_language_index)
-        }
-
-        # These item does not need to be converted to numpy array, they are for debugging purpose only
-        batch_obj["batch_node_type"] = batch_node_type
-        batch_obj["batch_node_tokens"] = batch_node_tokens
-        batch_obj["batch_children_node_tokens"] = batch_children_node_tokens
 
         if len(batch_subtree_id) != 0:
             batch_subtree_id = np.reshape(batch_subtree_id, (len(all_tree_indices), 1))
 
-        batch_obj["batch_subtree_id"] = batch_subtree_id
+        batch_language_index = np.asarray(batch_language_index)
+        batch_node_type_id = np.asarray(batch_node_type_id)
+        batch_node_tokens_id = np.asarray(batch_node_tokens_id)
+        batch_children_index = np.asarray(batch_children_index)
+        batch_children_node_tokens_id = np.asarray(batch_children_node_tokens_id)
 
-        return batch_obj
+        # The following variables are for debugging purpose
+        # batch_children_node_type_id = self._pad_batch_3D(batch_children_node_type_id)
+        # batch_node_index = self._pad_batch_2D(batch_node_index)
+
+        batch_x = [batch_language_index, batch_node_type_id, batch_node_tokens_id, batch_children_index,
+                   batch_children_node_tokens_id]
+        batch_y = batch_subtree_id
+
+        return batch_x, batch_y
 
     def _pad_batch_2D(self, batch):
         max_batch = max([len(x) for x in batch])

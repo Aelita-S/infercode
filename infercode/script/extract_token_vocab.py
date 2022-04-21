@@ -8,7 +8,7 @@ parser.add_argument('--node_token_vocab_model_prefix', type=str, required=True)
 
 
 def main(opt):
-    token_vocab_extractor = TokenVocabExtractor(node_token_vocab_model_path=opt.node_token_vocab_model_path,
+    token_vocab_extractor = TokenVocabExtractor(node_token_vocab_model_path=opt.NODE_TOKEN_VOCAB_MODEL_PATH,
                                                 model_type="word")
 
     token_vocab_extractor.create_vocab_from_dir(opt.data_path)

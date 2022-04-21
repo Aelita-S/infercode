@@ -13,7 +13,7 @@ def main(opt):
     ast_parser = ASTParser()
     subtree_util = SubtreeUtil()
 
-    subtree_vocab_extractor = SubtreeVocabExtractor(subtree_vocab_model_path=opt.subtree_vocab_model_path)
+    subtree_vocab_extractor = SubtreeVocabExtractor(subtree_vocab_model_path=opt.SUBTREE_VOCAB_MODEL_PATH)
 
     subtree_vocab_extractor.create_vocab_from_dir(opt.data_path)
 
