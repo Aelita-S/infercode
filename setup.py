@@ -4,7 +4,8 @@ install_requires = [
     "bidict>=0.22.0,<1.0",
     "numpy>=1.22.3,<2",
     "sentencepiece>=0.1.96,<0.2.0",
-    "tqdm>=4.64.0,<5",
+    "tqdm>=4.64.0,<5.0",
+    "tree-sitter>=0.20.0,<1.0",
     "tree_sitter_parsers>=0.0.7,<0.1.0",
 ]
 
@@ -12,7 +13,7 @@ extra_requires = [
     "tensorflow>=2.8.0,<3.0.0",
     "tensorflow-gpu>=2.8.0,<3.0.0",
     "nltk>=3.7,<4.0",
-    "sklearn>=1.0.2,<2.0.0",
+    "scikit-learn>=1.0.2,<2.0.0",
 ]
 
 setup(
