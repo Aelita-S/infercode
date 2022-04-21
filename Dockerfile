@@ -50,8 +50,9 @@ ENV MODEL_NAME=model
 
 # Create a script that runs the model server so we can use environment variables
 # while also passing in arguments from the docker command line
+# gRPC not used for now
 RUN echo '#!/bin/bash \n\n\
-tensorflow_model_server --port=8500 --rest_api_port=8501 \
+tensorflow_model_server --port=8500 --rest_api_port=8501 --grpc_max_threads=1 \
 --model_name=${MODEL_NAME} --model_base_path=${MODEL_BASE_PATH}/${MODEL_NAME} \
 "$@"' > /usr/bin/tf_serving_entrypoint.sh \
 && chmod +x /usr/bin/tf_serving_entrypoint.sh

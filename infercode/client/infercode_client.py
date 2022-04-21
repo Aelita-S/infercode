@@ -61,7 +61,7 @@ class InferCodeClient(BaseClient):
                                  headers={
                                      'content-type': 'application/json',
                                      'content-encoding': 'gzip',
-                                 })
+                                 }, timeout=30)
         if response.status_code != 200:
             raise RuntimeError(
                 f"Remote model predict failed with status code {response.status_code}, message: \n{response.text}")

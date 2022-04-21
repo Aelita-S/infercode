@@ -88,55 +88,47 @@ class TensorUtil:
                 batch_subtree_id.append(tree_indices["subtree_id"])
 
         # [[]]
-        batch_node_type_id = self._pad_batch_2D(batch_node_type_id, return_np_array)
+        batch_node_type_id = self._pad_batch_2D(batch_node_type_id)
         # [[[]]]
-        batch_node_tokens_id = self._pad_batch_3D(batch_node_tokens_id, return_np_array)
+        batch_node_tokens_id = self._pad_batch_3D(batch_node_tokens_id)
         # [[[]]]
-        batch_children_index = self._pad_batch_3D(batch_children_index, return_np_array)
+        batch_children_index = self._pad_batch_3D(batch_children_index)
         # [[[[]]]]
-        batch_children_node_tokens_id = self._pad_batch_4D(batch_children_node_tokens_id, return_np_array)
+        batch_children_node_tokens_id = self._pad_batch_4D(batch_children_node_tokens_id)
 
-        if return_np_array:
-            batch_language_index = np.asarray(batch_language_index)
-            batch_node_type_id = np.asarray(batch_node_type_id)
-            batch_node_tokens_id = np.asarray(batch_node_tokens_id)
-            batch_children_index = np.asarray(batch_children_index)
-            batch_children_node_tokens_id = np.asarray(batch_children_node_tokens_id)
-            if len(batch_subtree_id) != 0:
+        if len(batch_subtree_id) != 0:
+            if return_np_array:
                 batch_subtree_id = np.reshape(batch_subtree_id, (len(all_tree_indices), 1))
-        # The following variables are for debugging purpose
-        # batch_children_node_type_id = self._pad_batch_3D(batch_children_node_type_id)
-        # batch_node_index = self._pad_batch_2D(batch_node_index)
+            else:
+                batch_subtree_id = [[x] for x in batch_subtree_id]
 
         batch_x = [batch_language_index, batch_node_type_id, batch_node_tokens_id, batch_children_index,
                    batch_children_node_tokens_id]
+
+        if return_np_array:
+            batch_x = [np.asarray(x) for x in batch_x]
+
         batch_y = batch_subtree_id
 
         return batch_x, batch_y
 
-    def _pad_batch_2D(self, batch, return_np_array=True):
+    def _pad_batch_2D(self, batch):
         max_batch = max([len(x) for x in batch])
         batch = [n + [0] * (max_batch - len(n)) for n in batch]
-        if return_np_array:
-            batch = np.asarray(batch)
         return batch
 
-    def _pad_batch_3D(self, batch, return_np_array=True):
+    def _pad_batch_3D(self, batch):
         max_2nd_D = max([len(x) for x in batch])
         max_3rd_D = max([len(c) for n in batch for c in n])
         batch = [n + ([[]] * (max_2nd_D - len(n))) for n in batch]
         batch = [[c + [0] * (max_3rd_D - len(c)) for c in sample] for sample in batch]
-        if return_np_array:
-            batch = np.asarray(batch)
         return batch
 
-    def _pad_batch_4D(self, batch, return_np_array=True):
+    def _pad_batch_4D(self, batch):
         max_2nd_D = max([len(x) for x in batch])
         max_3rd_D = max([len(c) for n in batch for c in n])
         max_4th_D = max([len(s) for n in batch for c in n for s in c])
         batch = [n + ([[]] * (max_2nd_D - len(n))) for n in batch]
         batch = [[c + ([[]] * (max_3rd_D - len(c))) for c in sample] for sample in batch]
         batch = [[[s + [0] * (max_4th_D - len(s)) for s in c] for c in sample] for sample in batch]
-        if return_np_array:
-            batch = np.asarray(batch)
         return batch
