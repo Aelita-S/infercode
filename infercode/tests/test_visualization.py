@@ -13,8 +13,7 @@ logging.basicConfig(level=logging.INFO)
 # config = configparser.ConfigParser()
 # config.read("../configs/OJ_raw_small.ini")
 os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
-infercode = InferCodeClient(language="c")
-infercode.init_from_config()
+infercode = InferCodeClient()
 vocabulary = []
 wv = []
 
@@ -30,7 +29,7 @@ for subdir, dirs, files in os.walk("../../datasets/OJ_raw_small"):
         vocabulary.append(label)
         with open(file_path, "r") as f:
             data = f.read()
-        vector = infercode.encode([data])
+        vector = infercode.encode([data], 'c')
         wv.append(vector[0])
 
 print(vocabulary)

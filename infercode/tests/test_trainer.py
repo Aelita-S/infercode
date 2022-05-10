@@ -13,5 +13,5 @@ if __name__ == '__main__':
                                             val_data_path=val_data_path,
                                             val_processed_data_path=val_processed_data_path)
 
-    infercode_trainer.train(workers=1)
+    infercode_trainer.train(workers=2)
     # infercode_trainer.test_train()

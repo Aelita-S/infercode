@@ -5,3 +5,5 @@ tensorflow~=2.8.0
 tqdm~=4.64.0
 tree_sitter~=0.20.0
 tree_sitter_parsers~=0.0.7
+scikit-learn~=1.0.2
+
