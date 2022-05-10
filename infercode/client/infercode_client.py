@@ -14,20 +14,20 @@ from infercode.client.base_client import BaseClient
 class InferCodeClient(BaseClient):
     logger = logging.getLogger('InferCodeTrainer')
 
-    def __init__(self, *, model_path: Optional[Path] = None, remote_model_predict_url: Optional[str] = None):
+    def __init__(self, *, model_path: Optional[Path] = None, remote_predict_url: Optional[str] = None):
         """
 
         :param model_path:
-        :param remote_model_predict_url: tf serving url, such as http://127.0.0.1:8501/v1/models/model:predict
+        :param remote_predict_url: tf serving url, such as http://127.0.0.1:8501/v1/models/model:predict
         """
         super().__init__()
         self.model_path = model_path
-        self.use_remote_model = remote_model_predict_url is not None
-        assert model_path is not None or remote_model_predict_url is not None, \
+        self.use_remote_model = remote_predict_url is not None
+        assert model_path is not None or remote_predict_url is not None, \
             "model_path or remote_model_predict_url should be provided"
         if model_path:
             self.infercode_model = tf.keras.models.load_model(model_path or self.model_path, compile=False)
-        self.remote_model_predict_url = remote_model_predict_url
+        self.remote_model_predict_url = remote_predict_url
 
     def snippets_to_tensors(self, language, batch_code_snippets: Collection[Union[str, bytes]]):
         batch_tree_indexes = []
@@ -68,7 +68,7 @@ class InferCodeClient(BaseClient):
         predictions = response.json()['predictions']
         return np.asarray(predictions)
 
-    def encode(self, language, batch_code_snippets: Collection[Union[str, bytes]]) -> np.ndarray:
+    def encode(self, batch_code_snippets: Collection[Union[str, bytes]], language: Optional[str] = 'c') -> np.ndarray:
         tensors = self.snippets_to_tensors(language, batch_code_snippets)
         if self.use_remote_model:
             return self._remote_predict(tensors)
