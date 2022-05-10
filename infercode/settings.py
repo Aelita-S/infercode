@@ -7,6 +7,8 @@ DATA_DIR = BASE_DIR / 'data'
 
 LOG_DIR = DATA_DIR / 'logs'
 
+DEBUG = False
+
 # neural network
 NODE_TYPE_DIM: int = 100
 NODE_TOKEN_DIM: int = 100

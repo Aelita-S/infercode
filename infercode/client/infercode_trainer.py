@@ -8,7 +8,7 @@ from infercode.data_utils.sequence import DataSequence
 from infercode.network.infercode_network import InferCodeModel
 from .base_client import BaseClient
 from ..network.loss import SampledSoftmaxLoss
-from ..settings import LOG_DIR
+from ..settings import DEBUG, LOG_DIR
 
 
 class InferCodeTrainer(BaseClient):
@@ -25,9 +25,9 @@ class InferCodeTrainer(BaseClient):
         # input layers (excluding the batch dimension)
         language_index = tf.keras.layers.Input(shape=(1,), dtype=tf.int32, name='language_index')
         node_type = tf.keras.layers.Input(shape=(None,), dtype=tf.int32, name='node_type')
-        node_tokens = tf.keras.layers.Input(shape=(None, 1), dtype=tf.int32, name='node_tokens')
+        node_tokens = tf.keras.layers.Input(shape=(None, None), dtype=tf.int32, name='node_tokens')
         children_index = tf.keras.layers.Input(shape=(None, None), dtype=tf.int32, name='children_index')
-        children_node_tokens = tf.keras.layers.Input(shape=(None, None, 1), dtype=tf.int32,
+        children_node_tokens = tf.keras.layers.Input(shape=(None, None, None), dtype=tf.int32,
                                                      name='children_node_tokens')
         num_subtrees = self.subtree_vocab.get_vocabulary_size()
         infercode_model = InferCodeModel(num_types=self.node_type_vocab.get_vocabulary_size(),
@@ -47,7 +47,8 @@ class InferCodeTrainer(BaseClient):
         # Adam optimizer
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
-        model.compile(optimizer=optimizer, loss=SampledSoftmaxLoss(num_subtrees, self.conv_output_dim))
+        model.compile(optimizer=optimizer, loss=SampledSoftmaxLoss(num_subtrees, self.conv_output_dim),
+                      run_eagerly=DEBUG)
         return model
 
     def process_data_sequence(self, input_data_path: Path, output_processed_data_path: Path,
