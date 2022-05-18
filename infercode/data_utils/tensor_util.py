@@ -1,12 +1,14 @@
 import numpy as np
 
+from infercode.data_utils.ast_util import ASTNode
+
 
 class TensorUtil:
 
     def __init__(self):
         pass
 
-    def transform_tree_to_index(self, tree):
+    def transform_tree_to_index(self, tree: ASTNode):
         node_type = []
         node_type_id = []
         node_tokens = []
@@ -18,12 +20,12 @@ class TensorUtil:
         children_node_tokens = []
         children_node_tokens_id = []
 
-        queue = [(tree, -1)]
+        queue: list[tuple[ASTNode, int]] = [(tree, -1)]
         while queue:
             node, parent_ind = queue.pop(0)
             node_ind = len(node_type)
             # add children and the parent index to the queue
-            queue.extend([(child, node_ind) for child in node['children']])
+            queue.extend([(child, node_ind) for child in node.children])
             # create a list to store this node's children indices
             children_index.append([])
             children_node_type.append([])
@@ -33,15 +35,15 @@ class TensorUtil:
             # add this child to its parent's child list
             if parent_ind > -1:
                 children_index[parent_ind].append(node_ind)
-                children_node_type[parent_ind].append(node["node_type"])
-                children_node_type_id[parent_ind].append(int(node["node_type_id"]))
-                children_node_tokens[parent_ind].append(node["node_tokens"])
-                children_node_tokens_id[parent_ind].append(node["node_tokens_id"])
+                children_node_type[parent_ind].append(node.node_type)
+                children_node_type_id[parent_ind].append(int(node.node_type_id))
+                children_node_tokens[parent_ind].append(node.node_tokens)
+                children_node_tokens_id[parent_ind].append(node.node_tokens_id)
 
-            node_type.append(node["node_type"])
-            node_type_id.append(node["node_type_id"])
-            node_tokens.append(node["node_tokens"])
-            node_tokens_id.append(node["node_tokens_id"])
+            node_type.append(node.node_type)
+            node_type_id.append(node.node_type_id)
+            node_tokens.append(node.node_tokens)
+            node_tokens_id.append(node.node_tokens_id)
             node_index.append(node_ind)
 
         data = {"node_index": node_index,
