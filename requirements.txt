@@ -1,9 +1,8 @@
 bidict~=0.22.0
-numpy~=1.22.3
+numpy~=1.22.4
 sentencepiece~=0.1.96
-tensorflow~=2.8.0
+tensorflow~=2.9.1
 tqdm~=4.64.0
 tree_sitter~=0.20.0
 tree_sitter_parsers~=0.0.7
-scikit-learn~=1.0.2
-
+scikit-learn~=1.1.0
