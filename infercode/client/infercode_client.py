@@ -29,7 +29,7 @@ class InferCodeClient(BaseClient):
             self.infercode_model = tf.keras.models.load_model(model_path or self.model_path, compile=False)
         self.remote_model_predict_url = remote_predict_url
 
-    def snippets_to_tensors(self, language, batch_code_snippets: Collection[Union[str, bytes]]):
+    def snippets_to_tensors(self, batch_code_snippets: Collection[Union[str, bytes]], language: str = 'c') -> list:
         batch_tree_indexes = []
         assert len(batch_code_snippets) <= 5, "Batch size should be less than 5"
         for code_snippet in batch_code_snippets:
@@ -69,7 +69,7 @@ class InferCodeClient(BaseClient):
         return np.asarray(predictions)
 
     def encode(self, batch_code_snippets: Collection[Union[str, bytes]], language: Optional[str] = 'c') -> np.ndarray:
-        tensors = self.snippets_to_tensors(language, batch_code_snippets)
+        tensors = self.snippets_to_tensors(batch_code_snippets, language)
         if self.use_remote_model:
             return self._remote_predict(tensors)
         return self.infercode_model.predict(tensors)
