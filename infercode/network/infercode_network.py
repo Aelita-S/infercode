@@ -142,6 +142,7 @@ class InferCodeModel(tf.keras.Model):
     def _compute_children_node_tokens_tensor(self, children_node_tokens_indices):
         zero_vecs = tf.zeros((1, self.node_token_dim))
         vector_lookup = tf.concat([zero_vecs, self.node_token_embeddings[1:, :]], axis=0)
+        # FIXME embedding_lookup OOM
         children_node_tokens_tensor = tf.nn.embedding_lookup(params=vector_lookup, ids=children_node_tokens_indices)
         children_node_tokens_tensor = tf.reduce_sum(input_tensor=children_node_tokens_tensor, axis=3)
         return children_node_tokens_tensor

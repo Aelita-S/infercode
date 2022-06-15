@@ -1,11 +1,12 @@
+import logging
 from pathlib import Path
 
 from tree_sitter import Language, Parser
 
+logger = logging.getLogger(__name__)
+
 
 class ASTParser:
-    import logging
-    logger = logging.getLogger('ASTParser')
 
     def __init__(self):
         # ------------ To initialize for the treesitter parser ------------

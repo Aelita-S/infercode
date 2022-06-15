@@ -1,8 +1,13 @@
+import logging
 from pathlib import Path
 from typing import Optional, Union
 
+import tree_sitter
+
 from infercode.data_utils import identifiersplitting
 from infercode.data_utils.vocabulary import Vocabulary
+
+logger = logging.getLogger(__name__)
 
 
 class ASTNode:
@@ -19,20 +24,17 @@ class ASTNode:
 
 
 class ASTUtil:
-    import logging
-    logger = logging.getLogger('ASTUtil')
-
     def __init__(self, node_type_vocab_model_path: Union[str, Path], node_token_vocab_model_path: Union[str, Path]):
         self.type_vocab = Vocabulary(1000, node_type_vocab_model_path)
         self.token_vocab = Vocabulary(100000, node_token_vocab_model_path)
 
     # Simplify the AST
-    def simplify_ast(self, tree, text: Union[str, bytes]):
+    def simplify_ast(self, tree: tree_sitter.Tree, text: Union[str, bytes]):
         # tree = self.ast_parser.parse(text)
         # convert bytes to string, ignore decoding errors
         if isinstance(text, bytes):
             text = text.decode('utf-8', 'ignore')
-        root = tree.root_node
+        root: tree_sitter.Node = tree.root_node
 
         ignore_types = ["\n"]
         num_nodes = 0
